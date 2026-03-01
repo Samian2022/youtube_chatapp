@@ -159,6 +159,17 @@ app.patch('/api/sessions/:id/title', async (req, res) => {
 
 // ── Generate image (Gemini first, then DALL-E if key set, else placeholder) ─
 const GEMINI_IMAGE_MODEL = 'gemini-2.0-flash-exp-image-generation';
+const GEMINI_IMAGE_TIMEOUT_MS = 45000; // 45s — image gen can be slow
+
+function getImagePartFromGeminiResponse(data) {
+  const parts = data?.candidates?.[0]?.content?.parts;
+  if (!Array.isArray(parts)) return null;
+  for (const p of parts) {
+    const inline = p?.inlineData ?? p?.inline_data;
+    if (inline?.data) return { data: inline.data, mimeType: inline.mimeType || inline.mime_type || 'image/png' };
+  }
+  return null;
+}
 
 app.post('/api/generate-image', async (req, res) => {
   try {
@@ -178,28 +189,41 @@ app.post('/api/generate-image', async (req, res) => {
           },
         });
       }
-      const geminiRes = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_IMAGE_MODEL}:generateContent?key=${geminiKey}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ role: 'user', parts }],
-            generationConfig: {
-              responseModalities: ['TEXT', 'IMAGE'],
-            },
-          }),
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), GEMINI_IMAGE_TIMEOUT_MS);
+      try {
+        const geminiRes = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_IMAGE_MODEL}:generateContent?key=${geminiKey}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{ parts }],
+              generationConfig: {
+                responseModalities: ['TEXT', 'IMAGE'],
+              },
+            }),
+            signal: controller.signal,
+          }
+        );
+        clearTimeout(timeoutId);
+        const data = await geminiRes.json().catch(() => ({}));
+        if (geminiRes.ok) {
+          const imagePart = getImagePartFromGeminiResponse(data);
+          if (imagePart) {
+            return res.json({ data: imagePart.data, mimeType: imagePart.mimeType });
+          }
+        } else {
+          console.warn('[generate-image] Gemini error', geminiRes.status, JSON.stringify(data).slice(0, 500));
         }
-      );
-      if (geminiRes.ok) {
-        const data = await geminiRes.json();
-        const part = data?.candidates?.[0]?.content?.parts?.find((p) => p.inlineData?.data);
-        if (part?.inlineData?.data) {
-          return res.json({
-            data: part.inlineData.data,
-            mimeType: part.inlineData.mimeType || 'image/png',
-          });
+      } catch (geminiErr) {
+        clearTimeout(timeoutId);
+        if (geminiErr.name === 'AbortError') {
+          console.warn('[generate-image] Gemini timed out after', GEMINI_IMAGE_TIMEOUT_MS / 1000, 's, using fallback');
+        } else {
+          console.warn('[generate-image] Gemini request failed:', geminiErr.message);
         }
+        // fall through to DALL-E or placeholder
       }
     }
 
