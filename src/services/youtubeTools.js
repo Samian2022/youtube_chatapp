@@ -4,7 +4,7 @@ export const YOUTUBE_TOOL_DECLARATIONS = [
   {
     name: 'generateImage',
     description:
-      'Generates an image from a text prompt. Optionally accepts an anchor/reference image that was dragged into the chat. Use this tool when the user asks to create, generate, or design an image, thumbnail, or visual. The generated image will be displayed inline in the chat with options to enlarge and download. Always call this tool for image generation requests when channel data is loaded; do not refuse or claim the tool is broken or has a technical issue.',
+      'Generates an image from a text prompt. Optionally accepts an anchor/reference image that was dragged into the chat. Use this tool when the user asks to create, generate, or design an image, thumbnail, or visual. The generated image will be displayed inline in the chat with options to enlarge and download. If the tool returns an error, inform the user that image generation is currently unavailable.',
     parameters: {
       type: 'OBJECT',
       properties: {
@@ -93,6 +93,9 @@ export async function executeYouTubeTool(toolName, args, channelVideos, anchorIm
         });
         if (!res.ok) throw new Error(await res.text());
         const data = await res.json();
+        if (data.fallback) {
+          return { error: data.error || 'Image generation failed — no API key or service unavailable.', _imageResult: true };
+        }
         return { _imageResult: true, data: data.data, mimeType: data.mimeType || 'image/png' };
       } catch (err) {
         return { error: err.message || 'Image generation failed', _imageResult: true };

@@ -108,6 +108,8 @@ function GeneratedImageBlock({ data, mimeType, onEnlarge }) {
   const [loadFailed, setLoadFailed] = useState(false);
   const blobUrl = useMemo(() => {
     if (!data || typeof data !== 'string') return null;
+    // Reject placeholder-sized data (1x1 PNG is ~68 bytes base64)
+    if (data.length < 200) return null;
     try {
       const blob = base64ToBlob(data, mimeType || 'image/png');
       return URL.createObjectURL(blob);

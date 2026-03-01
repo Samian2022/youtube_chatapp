@@ -158,7 +158,7 @@ app.patch('/api/sessions/:id/title', async (req, res) => {
 });
 
 // ── Generate image (Gemini first, then DALL-E if key set, else placeholder) ─
-const GEMINI_IMAGE_MODEL = 'gemini-2.0-flash-exp-image-generation';
+const GEMINI_IMAGE_MODEL = 'gemini-2.0-flash';
 const GEMINI_IMAGE_TIMEOUT_MS = 45000; // 45s — image gen can be slow
 
 function getImagePartFromGeminiResponse(data) {
@@ -252,7 +252,12 @@ app.post('/api/generate-image', async (req, res) => {
 
     // 3. Placeholder if no key or API failed
     const placeholder = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
-    res.json({ data: placeholder, mimeType: 'image/png' });
+    res.json({
+      data: placeholder,
+      mimeType: 'image/png',
+      fallback: true,
+      error: 'No image generation API available or all attempts failed.',
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
