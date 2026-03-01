@@ -158,7 +158,7 @@ app.patch('/api/sessions/:id/title', async (req, res) => {
 });
 
 // ── Generate image (Gemini first, then DALL-E if key set, else placeholder) ─
-const GEMINI_IMAGE_MODEL = 'gemini-2.0-flash-preview-image-generation';
+const GEMINI_IMAGE_MODEL = 'gemini-2.0-flash-exp-image-generation';
 const GEMINI_IMAGE_TIMEOUT_MS = 45000; // 45s — image gen can be slow
 
 function getImagePartFromGeminiResponse(data) {
@@ -172,6 +172,7 @@ function getImagePartFromGeminiResponse(data) {
 }
 
 app.post('/api/generate-image', async (req, res) => {
+  let fallbackReason = '';
   try {
     const { prompt, anchor_image } = req.body;
     const textPrompt = String(prompt || '').slice(0, 1000);
@@ -179,7 +180,13 @@ app.post('/api/generate-image', async (req, res) => {
     const openaiKey = process.env.REACT_APP_OPENAI_API_KEY || process.env.OPENAI_API_KEY;
     console.log('[generate-image] geminiKey present:', !!geminiKey, 'length:', geminiKey?.length);
 
-    // 1. Try Gemini image generation (use your existing Gemini API key)
+    if (!geminiKey) {
+      fallbackReason = 'No Gemini API key on server. Set GEMINI_API_KEY or REACT_APP_GEMINI_API_KEY in .env and restart the server.';
+    } else if (!textPrompt) {
+      fallbackReason = 'No prompt provided.';
+    }
+
+    // 1. Try Gemini image generation
     if (geminiKey && textPrompt) {
       const parts = [{ text: `Generate an image: ${textPrompt}` }];
       if (anchor_image && typeof anchor_image === 'string') {
@@ -214,17 +221,22 @@ app.post('/api/generate-image', async (req, res) => {
           if (imagePart) {
             return res.json({ data: imagePart.data, mimeType: imagePart.mimeType });
           }
+          fallbackReason = 'Gemini returned no image (model may not support image generation for this key).';
+          console.warn('[generate-image] Gemini 200 but no image. Keys:', data ? Object.keys(data) : [], 'parts length:', data?.candidates?.[0]?.content?.parts?.length);
         } else {
-          console.warn('[generate-image] Gemini error', geminiRes.status, JSON.stringify(data).slice(0, 500));
+          const errMsg = data?.error?.message || data?.message || JSON.stringify(data).slice(0, 200);
+          fallbackReason = `Gemini API error (${geminiRes.status}): ${errMsg}`;
+          console.warn('[generate-image] Gemini error', geminiRes.status, errMsg);
         }
       } catch (geminiErr) {
         clearTimeout(timeoutId);
         if (geminiErr.name === 'AbortError') {
-          console.warn('[generate-image] Gemini timed out after', GEMINI_IMAGE_TIMEOUT_MS / 1000, 's, using fallback');
+          fallbackReason = `Gemini timed out after ${GEMINI_IMAGE_TIMEOUT_MS / 1000}s.`;
+          console.warn('[generate-image] Gemini timed out');
         } else {
+          fallbackReason = `Gemini request failed: ${geminiErr.message}`;
           console.warn('[generate-image] Gemini request failed:', geminiErr.message);
         }
-        // fall through to DALL-E or placeholder
       }
     }
 
@@ -249,15 +261,16 @@ app.post('/api/generate-image', async (req, res) => {
         const b64 = data?.data?.[0]?.b64_json;
         if (b64) return res.json({ data: b64, mimeType: 'image/png' });
       }
+      fallbackReason = fallbackReason || 'DALL-E request failed or returned no image.';
     }
 
-    // 3. Placeholder if no key or API failed
+    // 3. No image from any provider
     const placeholder = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
     res.json({
       data: placeholder,
       mimeType: 'image/png',
       fallback: true,
-      error: 'No image generation API available or all attempts failed.',
+      error: fallbackReason || 'No image generation API available or all attempts failed.',
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
