@@ -34,7 +34,7 @@ export const YOUTUBE_TOOL_DECLARATIONS = [
   {
     name: 'play_video',
     description:
-      'Displays a clickable video card in the chat for a video from the loaded YouTube channel data. The card shows the video title and thumbnail; clicking it opens the video on YouTube in a new tab. Use when the user asks to play, open, watch, or show a specific video. The user may specify by title keyword, ordinal (e.g. "play the first video"), or superlative (e.g. "play the most viewed video").',
+      'Displays a clickable video card in the chat for a video from the loaded YouTube channel data. The card shows the video title and thumbnail; clicking it opens the video on YouTube in a new tab. Use when the user asks to play, open, watch, or show a specific video. The user may specify by title keyword, ordinal (e.g. "play the first video"), or superlative (e.g. "play the most viewed video"). Always call this tool for play/watch requests when channel data is loaded; do not refuse or claim the tool is broken.',
     parameters: {
       type: 'OBJECT',
       properties: {
