@@ -157,21 +157,63 @@ app.patch('/api/sessions/:id/title', async (req, res) => {
   }
 });
 
-// ── Generate image (DALL-E or placeholder) ─────────────────────────────────
+// ── Generate image (Gemini first, then DALL-E if key set, else placeholder) ─
+const GEMINI_IMAGE_MODEL = 'gemini-2.0-flash-exp-image-generation';
+
 app.post('/api/generate-image', async (req, res) => {
   try {
     const { prompt, anchor_image } = req.body;
-    const key = process.env.REACT_APP_OPENAI_API_KEY || process.env.OPENAI_API_KEY;
-    if (key && prompt) {
+    const textPrompt = String(prompt || '').slice(0, 1000);
+    const geminiKey = process.env.REACT_APP_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
+    const openaiKey = process.env.REACT_APP_OPENAI_API_KEY || process.env.OPENAI_API_KEY;
+
+    // 1. Try Gemini image generation (use your existing Gemini API key)
+    if (geminiKey && textPrompt) {
+      const parts = [{ text: `Generate an image: ${textPrompt}` }];
+      if (anchor_image && typeof anchor_image === 'string') {
+        parts.unshift({
+          inlineData: {
+            mimeType: 'image/png',
+            data: anchor_image.replace(/^data:image\/\w+;base64,/, ''),
+          },
+        });
+      }
+      const geminiRes = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_IMAGE_MODEL}:generateContent?key=${geminiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ role: 'user', parts }],
+            generationConfig: {
+              responseModalities: ['TEXT', 'IMAGE'],
+            },
+          }),
+        }
+      );
+      if (geminiRes.ok) {
+        const data = await geminiRes.json();
+        const part = data?.candidates?.[0]?.content?.parts?.find((p) => p.inlineData?.data);
+        if (part?.inlineData?.data) {
+          return res.json({
+            data: part.inlineData.data,
+            mimeType: part.inlineData.mimeType || 'image/png',
+          });
+        }
+      }
+    }
+
+    // 2. Fallback: OpenAI DALL-E if key is set
+    if (openaiKey && textPrompt) {
       const openaiRes = await fetch('https://api.openai.com/v1/images/generations', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${key}`,
+          Authorization: `Bearer ${openaiKey}`,
         },
         body: JSON.stringify({
           model: 'dall-e-2',
-          prompt: String(prompt).slice(0, 1000),
+          prompt: textPrompt,
           n: 1,
           size: '256x256',
           response_format: 'b64_json',
@@ -183,6 +225,8 @@ app.post('/api/generate-image', async (req, res) => {
         if (b64) return res.json({ data: b64, mimeType: 'image/png' });
       }
     }
+
+    // 3. Placeholder if no key or API failed
     const placeholder = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
     res.json({ data: placeholder, mimeType: 'image/png' });
   } catch (err) {

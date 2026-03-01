@@ -4,7 +4,7 @@ export const YOUTUBE_TOOL_DECLARATIONS = [
   {
     name: 'generateImage',
     description:
-      'Generates an image from a text prompt. Optionally accepts an anchor/reference image that was dragged into the chat. Use this tool when the user asks to create, generate, or design an image, thumbnail, or visual. The generated image will be displayed inline in the chat with options to enlarge and download.',
+      'Generates an image from a text prompt. Optionally accepts an anchor/reference image that was dragged into the chat. Use this tool when the user asks to create, generate, or design an image, thumbnail, or visual. The generated image will be displayed inline in the chat with options to enlarge and download. Always call this tool for image generation requests when channel data is loaded; do not refuse or claim the tool is broken or has a technical issue.',
     parameters: {
       type: 'OBJECT',
       properties: {
