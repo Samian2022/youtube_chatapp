@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Plus, MoreVertical, Trash2, LogOut, Paperclip, ArrowUp, Square, Sparkles, Play, X } from 'lucide-react';
@@ -83,6 +83,108 @@ function splitMessageWithYouTubeEmbeds(content) {
   }
   segments.push({ type: 'text', value: content.slice(lastIndex) });
   return segments;
+}
+
+// Decode base64 to binary (strip whitespace so atob doesn't fail)
+function base64ToBlob(base64, mimeType = 'image/png') {
+  const clean = String(base64).replace(/\s/g, '');
+  const binary = atob(clean);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return new Blob([bytes], { type: mimeType });
+}
+
+function downloadBlobAsFile(blob, filename = 'generated.png') {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 200);
+}
+
+// Use a blob URL for the img so large base64 doesn't hit data-URL length limits in the browser
+function GeneratedImageBlock({ data, mimeType, onEnlarge }) {
+  const [loadFailed, setLoadFailed] = useState(false);
+  const blobUrl = useMemo(() => {
+    if (!data || typeof data !== 'string') return null;
+    try {
+      const blob = base64ToBlob(data, mimeType || 'image/png');
+      return URL.createObjectURL(blob);
+    } catch {
+      return null;
+    }
+  }, [data, mimeType]);
+  useEffect(() => {
+    return () => {
+      if (blobUrl) URL.revokeObjectURL(blobUrl);
+    };
+  }, [blobUrl]);
+  const handleDownload = (e) => {
+    e.stopPropagation();
+    if (!data) return;
+    try {
+      const blob = base64ToBlob(data, mimeType || 'image/png');
+      downloadBlobAsFile(blob, 'generated.png');
+    } catch {}
+  };
+  if (loadFailed && data) {
+    return (
+      <div className="chat-generated-image-wrap chat-generated-image-fallback">
+        <p>Image failed to load. <button type="button" className="chat-download-link-btn" onClick={handleDownload}>Download instead</button></p>
+      </div>
+    );
+  }
+  if (!blobUrl) {
+    return (
+      <div className="chat-generated-image-wrap chat-generated-image-fallback">
+        <p>Image could not be displayed.</p>
+      </div>
+    );
+  }
+  return (
+    <div className="chat-generated-image-wrap">
+      <img
+        src={blobUrl}
+        alt="Generated"
+        className="chat-generated-image"
+        onClick={onEnlarge}
+        onError={() => setLoadFailed(true)}
+      />
+      <button type="button" className="chat-download-img-btn" onClick={handleDownload}>
+        Download
+      </button>
+    </div>
+  );
+}
+
+function EnlargedImageContent({ data, mimeType }) {
+  const blobUrl = useMemo(() => {
+    if (!data || typeof data !== 'string') return null;
+    try {
+      const blob = base64ToBlob(data, mimeType || 'image/png');
+      return URL.createObjectURL(blob);
+    } catch {
+      return null;
+    }
+  }, [data, mimeType]);
+  useEffect(() => {
+    return () => { if (blobUrl) URL.revokeObjectURL(blobUrl); };
+  }, [blobUrl]);
+  const handleDownload = () => {
+    if (!data) return;
+    try {
+      const blob = base64ToBlob(data, mimeType || 'image/png');
+      downloadBlobAsFile(blob, 'generated.png');
+    } catch {}
+  };
+  if (!blobUrl) return <p>Image could not be displayed.</p>;
+  return (
+    <>
+      <img src={blobUrl} alt="Enlarged" className="chat-enlarge-img" />
+      <button type="button" className="chat-enlarge-download" onClick={handleDownload}>Download</button>
+    </>
+  );
 }
 
 function MessageContentWithEmbeds({ content }) {
@@ -879,21 +981,18 @@ ${sessionSummary}${slimCsvBlock}
                 const isImageResult = (r?._imageResult || tc.name === 'generateImage') && r?.data && !r?.error;
                 if (isImageResult) {
                   return (
-                    <div key={ti} className="chat-generated-image-wrap">
-                      <img
-                        src={`data:${r.mimeType || 'image/png'};base64,${r.data}`}
-                        alt="Generated"
-                        className="chat-generated-image"
-                        onClick={() => setEnlargeContent({ type: 'image', data: r.data, mimeType: r.mimeType })}
-                      />
-                      <button type="button" className="chat-download-img-btn" onClick={(e) => { e.stopPropagation(); const a = document.createElement('a'); a.href = `data:${r.mimeType || 'image/png'};base64,${r.data}`; a.download = 'generated.png'; a.click(); }}>Download</button>
-                    </div>
+                    <GeneratedImageBlock
+                      key={ti}
+                      data={r.data}
+                      mimeType={r.mimeType || 'image/png'}
+                      onEnlarge={() => setEnlargeContent({ type: 'image', data: r.data, mimeType: r.mimeType })}
+                    />
                   );
                 }
-                if (tc.name === 'generateImage' && r && !r.data) {
+                if (tc.name === 'generateImage') {
                   return (
                     <div key={ti} className="chat-generated-image-wrap chat-generated-image-fallback">
-                      <p>{r.error ? `Image generation failed: ${r.error}` : 'Image was generated; if you don’t see it, try refreshing.'}</p>
+                      <p>{r?.error ? `Image generation failed: ${r.error}` : 'Generated image could not be displayed.'}</p>
                     </div>
                   );
                 }
@@ -1065,11 +1164,8 @@ ${sessionSummary}${slimCsvBlock}
             <button type="button" className="chat-enlarge-close" onClick={() => setEnlargeContent(null)} aria-label="Close">
               <X size={20} strokeWidth={1.75} />
             </button>
-            {enlargeContent.type === 'image' && (
-              <>
-                <img src={`data:${enlargeContent.mimeType || 'image/png'};base64,${enlargeContent.data}`} alt="Enlarged" className="chat-enlarge-img" />
-                <a href={`data:${enlargeContent.mimeType};base64,${enlargeContent.data}`} download="generated.png" className="chat-enlarge-download">Download</a>
-              </>
+            {enlargeContent.type === 'image' && enlargeContent.data && (
+              <EnlargedImageContent data={enlargeContent.data} mimeType={enlargeContent.mimeType || 'image/png'} />
             )}
             {enlargeContent.type === 'chart' && enlargeContent.chart && (
               <>
