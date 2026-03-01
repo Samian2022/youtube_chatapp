@@ -158,7 +158,7 @@ app.patch('/api/sessions/:id/title', async (req, res) => {
 });
 
 // ── Generate image (Gemini first, then DALL-E if key set, else placeholder) ─
-const GEMINI_IMAGE_MODEL = 'gemini-2.0-flash';
+const GEMINI_IMAGE_MODEL = 'gemini-2.0-flash-preview-image-generation';
 const GEMINI_IMAGE_TIMEOUT_MS = 45000; // 45s — image gen can be slow
 
 function getImagePartFromGeminiResponse(data) {
