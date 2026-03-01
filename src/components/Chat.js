@@ -876,7 +876,8 @@ ${sessionSummary}${slimCsvBlock}
                     </a>
                   );
                 }
-                if (r?._imageResult && r.data && !r.error) {
+                const isImageResult = (r?._imageResult || tc.name === 'generateImage') && r?.data && !r?.error;
+                if (isImageResult) {
                   return (
                     <div key={ti} className="chat-generated-image-wrap">
                       <img
@@ -885,7 +886,14 @@ ${sessionSummary}${slimCsvBlock}
                         className="chat-generated-image"
                         onClick={() => setEnlargeContent({ type: 'image', data: r.data, mimeType: r.mimeType })}
                       />
-                      <button type="button" className="chat-download-img-btn" onClick={(e) => { e.stopPropagation(); const a = document.createElement('a'); a.href = `data:${r.mimeType};base64,${r.data}`; a.download = 'generated.png'; a.click(); }}>Download</button>
+                      <button type="button" className="chat-download-img-btn" onClick={(e) => { e.stopPropagation(); const a = document.createElement('a'); a.href = `data:${r.mimeType || 'image/png'};base64,${r.data}`; a.download = 'generated.png'; a.click(); }}>Download</button>
+                    </div>
+                  );
+                }
+                if (tc.name === 'generateImage' && r && !r.data) {
+                  return (
+                    <div key={ti} className="chat-generated-image-wrap chat-generated-image-fallback">
+                      <p>{r.error ? `Image generation failed: ${r.error}` : 'Image was generated; if you don’t see it, try refreshing.'}</p>
                     </div>
                   );
                 }

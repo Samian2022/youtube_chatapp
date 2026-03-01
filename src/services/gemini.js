@@ -242,8 +242,13 @@ export const chatWithYouTubeTools = async (history, newMessage, channelVideosSum
     const toolResult = await Promise.resolve(executeFn(name, args));
     toolCalls.push({ name, args, result: toolResult });
     if (toolResult?._chartType) charts.push(toolResult);
+    // Send a small result to Gemini for image tool (avoid huge base64 in API request)
+    const payloadForModel =
+      toolResult?._imageResult && toolResult?.data
+        ? { _imageResult: true, success: true, message: 'Image generated and shown to the user.' }
+        : toolResult;
     response = (
-      await chat.sendMessage([{ functionResponse: { name, response: { result: toolResult } } }])
+      await chat.sendMessage([{ functionResponse: { name, response: { result: payloadForModel } } }])
     ).response;
   }
 
