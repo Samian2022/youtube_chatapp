@@ -754,11 +754,26 @@ ${sessionSummary}${slimCsvBlock}
               {m.toolCalls?.map((tc, ti) => {
                 const r = tc.result;
                 if (r?._videoCard && r.video_url) {
+                  const videoId = r.video_url.match(/(?:v=|\/embed\/)([a-zA-Z0-9_-]{11})/)?.[1];
                   return (
-                    <a key={ti} href={r.video_url} target="_blank" rel="noreferrer" className="chat-video-card">
-                      {r.thumbnail && <img src={r.thumbnail} alt="" className="chat-video-card-thumb" />}
-                      <span className="chat-video-card-title">{r.title || 'Video'}</span>
-                    </a>
+                    <div key={ti} className="chat-video-card-wrap">
+                      <div className="chat-video-card-header">
+                        {r.thumbnail && <img src={r.thumbnail} alt="" className="chat-video-card-thumb" />}
+                        <span className="chat-video-card-title">{r.title || 'Video'}</span>
+                        <a href={r.video_url} target="_blank" rel="noreferrer" className="chat-video-open-yt">Open on YouTube</a>
+                      </div>
+                      {videoId && (
+                        <div className="chat-video-embed">
+                          <iframe
+                            title={r.title || 'YouTube video'}
+                            src={`https://www.youtube.com/embed/${videoId}`}
+                            frameBorder="0"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                            allowFullScreen
+                          />
+                        </div>
+                      )}
+                    </div>
                   );
                 }
                 if (r?._imageResult && r.data && !r.error) {
