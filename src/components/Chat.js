@@ -55,6 +55,50 @@ const messageText = (m) => {
   return m.content || '';
 };
 
+// Split message content into text and YouTube embed segments (any channel)
+const YOUTUBE_WATCH_REGEX = /https?:\/\/(?:www\.)?youtube\.com\/watch\?v=([\w-]+)/g;
+function splitMessageWithYouTubeEmbeds(content) {
+  if (!content || typeof content !== 'string') return [{ type: 'text', value: content || '' }];
+  const segments = [];
+  let lastIndex = 0;
+  let match;
+  while ((match = YOUTUBE_WATCH_REGEX.exec(content)) !== null) {
+    segments.push({ type: 'text', value: content.slice(lastIndex, match.index) });
+    segments.push({ type: 'embed', value: match[1] });
+    lastIndex = YOUTUBE_WATCH_REGEX.lastIndex;
+  }
+  segments.push({ type: 'text', value: content.slice(lastIndex) });
+  return segments;
+}
+
+function MessageContentWithEmbeds({ content }) {
+  const segments = splitMessageWithYouTubeEmbeds(content);
+  return (
+    <>
+      {segments.map((seg, i) =>
+        seg.type === 'text' ? (
+          seg.value ? (
+            <ReactMarkdown key={i} remarkPlugins={[remarkGfm]}>{seg.value}</ReactMarkdown>
+          ) : null
+        ) : (
+          <div key={i} className="chat-msg-youtube-embed">
+            <iframe
+              width="100%"
+              height="315"
+              src={`https://www.youtube.com/embed/${seg.value}`}
+              frameBorder="0"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+              title="YouTube video"
+              style={{ borderRadius: 8, margin: '8px 0' }}
+            />
+          </div>
+        )
+      )}
+    </>
+  );
+}
+
 // ── Structured part renderer (code execution responses) ───────────────────────
 
 function StructuredParts({ parts }) {
@@ -713,7 +757,7 @@ ${sessionSummary}${slimCsvBlock}
                   m.parts ? (
                     <StructuredParts parts={m.parts} />
                   ) : m.content ? (
-                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{m.content}</ReactMarkdown>
+                    <MessageContentWithEmbeds content={m.content} />
                   ) : (
                     <span className="thinking-dots">
                       <span /><span /><span />
@@ -754,26 +798,11 @@ ${sessionSummary}${slimCsvBlock}
               {m.toolCalls?.map((tc, ti) => {
                 const r = tc.result;
                 if (r?._videoCard && r.video_url) {
-                  const videoId = r.video_url.match(/(?:v=|\/embed\/)([a-zA-Z0-9_-]{11})/)?.[1];
                   return (
-                    <div key={ti} className="chat-video-card-wrap">
-                      <div className="chat-video-card-header">
-                        {r.thumbnail && <img src={r.thumbnail} alt="" className="chat-video-card-thumb" />}
-                        <span className="chat-video-card-title">{r.title || 'Video'}</span>
-                        <a href={r.video_url} target="_blank" rel="noreferrer" className="chat-video-open-yt">Open on YouTube</a>
-                      </div>
-                      {videoId && (
-                        <div className="chat-video-embed">
-                          <iframe
-                            title={r.title || 'YouTube video'}
-                            src={`https://www.youtube.com/embed/${videoId}`}
-                            frameBorder="0"
-                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                            allowFullScreen
-                          />
-                        </div>
-                      )}
-                    </div>
+                    <a key={ti} href={r.video_url} target="_blank" rel="noreferrer" className="chat-video-card">
+                      {r.thumbnail && <img src={r.thumbnail} alt="" className="chat-video-card-thumb" />}
+                      <span className="chat-video-card-title">{r.title || 'Video'}</span>
+                    </a>
                   );
                 }
                 if (r?._imageResult && r.data && !r.error) {
