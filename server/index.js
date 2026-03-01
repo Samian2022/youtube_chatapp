@@ -177,6 +177,7 @@ app.post('/api/generate-image', async (req, res) => {
     const textPrompt = String(prompt || '').slice(0, 1000);
     const geminiKey = process.env.REACT_APP_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
     const openaiKey = process.env.REACT_APP_OPENAI_API_KEY || process.env.OPENAI_API_KEY;
+    console.log('[generate-image] geminiKey present:', !!geminiKey, 'length:', geminiKey?.length);
 
     // 1. Try Gemini image generation (use your existing Gemini API key)
     if (geminiKey && textPrompt) {
