@@ -118,15 +118,19 @@ export async function executeYouTubeTool(toolName, args, channelVideos, anchorIm
     }
 
     case 'play_video': {
-      const idx = typeof args.video_index === 'number' ? args.video_index : parseInt(args.video_index, 10);
-      const v = vid(idx);
-      if (!v) return { error: `Video index ${idx} out of range (0–${videos.length - 1}).` };
+      let idx = typeof args.video_index === 'number' ? args.video_index : parseInt(args.video_index, 10);
+      if (Number.isNaN(idx) || idx < 0) idx = 0;
+      if (idx >= 1 && idx <= videos.length) idx = idx - 1;
+      const v = videos[idx];
+      if (!v) return { error: `Video index ${idx} out of range. There are ${videos.length} videos (use 0 to ${videos.length - 1}).` };
+      const videoUrl = v.video_url || v.url || (v.video_id && `https://www.youtube.com/watch?v=${v.video_id}`) || (v.id && `https://www.youtube.com/watch?v=${v.id}`);
+      if (!videoUrl) return { error: `Video at index ${idx} has no URL. Channel data may use different field names.` };
       return {
         _videoCard: true,
         video_index: idx,
-        title: v.title,
-        thumbnail: v.thumbnail,
-        video_url: v.video_url,
+        title: v.title || v.name || 'Video',
+        thumbnail: v.thumbnail || v.thumb,
+        video_url: videoUrl,
       };
     }
 
