@@ -47,19 +47,24 @@ app.get('/api/status', async (req, res) => {
 
 app.post('/api/users', async (req, res) => {
   try {
-    const { username, password, email } = req.body;
+    const { username, password, email, firstName, lastName } = req.body;
     if (!username || !password)
       return res.status(400).json({ error: 'Username and password required' });
+    if (firstName == null || lastName == null || !String(firstName).trim() || !String(lastName).trim())
+      return res.status(400).json({ error: 'First name and last name required' });
     const name = String(username).trim().toLowerCase();
     const existing = await db.collection('users').findOne({ username: name });
     if (existing) return res.status(400).json({ error: 'Username already exists' });
     const hashed = await bcrypt.hash(password, 10);
-    await db.collection('users').insertOne({
+    const doc = {
       username: name,
       password: hashed,
       email: email ? String(email).trim().toLowerCase() : null,
       createdAt: new Date().toISOString(),
-    });
+    };
+    doc.firstName = String(firstName).trim();
+    doc.lastName = String(lastName).trim();
+    await db.collection('users').insertOne(doc);
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -76,7 +81,12 @@ app.post('/api/users/login', async (req, res) => {
     if (!user) return res.status(401).json({ error: 'User not found' });
     const ok = await bcrypt.compare(password, user.password);
     if (!ok) return res.status(401).json({ error: 'Invalid password' });
-    res.json({ ok: true, username: name });
+    res.json({
+      ok: true,
+      username: name,
+      firstName: user.firstName || '',
+      lastName: user.lastName || '',
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -144,6 +154,66 @@ app.patch('/api/sessions/:id/title', async (req, res) => {
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+// ── Generate image (DALL-E or placeholder) ─────────────────────────────────
+app.post('/api/generate-image', async (req, res) => {
+  try {
+    const { prompt, anchor_image } = req.body;
+    const key = process.env.REACT_APP_OPENAI_API_KEY || process.env.OPENAI_API_KEY;
+    if (key && prompt) {
+      const openaiRes = await fetch('https://api.openai.com/v1/images/generations', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${key}`,
+        },
+        body: JSON.stringify({
+          model: 'dall-e-2',
+          prompt: String(prompt).slice(0, 1000),
+          n: 1,
+          size: '256x256',
+          response_format: 'b64_json',
+        }),
+      });
+      if (openaiRes.ok) {
+        const data = await openaiRes.json();
+        const b64 = data?.data?.[0]?.b64_json;
+        if (b64) return res.json({ data: b64, mimeType: 'image/png' });
+      }
+    }
+    const placeholder = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+    res.json({ data: placeholder, mimeType: 'image/png' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── YouTube channel download ─────────────────────────────────────────────────
+const { fetchChannelData } = require('./youtubeChannel');
+
+app.post('/api/youtube/channel', async (req, res) => {
+  try {
+    const { url, maxVideos } = req.body;
+    const max = Math.min(Math.max(parseInt(maxVideos, 10) || 10, 100), 100);
+    if (!url || !String(url).trim())
+      return res.status(400).json({ error: 'Channel URL required' });
+    let headersSent = false;
+    const sendProgress = (current, total) => {
+      if (!headersSent) {
+        res.setHeader('Content-Type', 'application/x-ndjson');
+        headersSent = true;
+      }
+      res.write(JSON.stringify({ type: 'progress', current, total }) + '\n');
+    };
+    const { channelTitle, videos } = await fetchChannelData(url, max, sendProgress);
+    if (!headersSent) res.setHeader('Content-Type', 'application/x-ndjson');
+    res.write(JSON.stringify({ type: 'done', channelTitle, videos }) + '\n');
+    res.end();
+  } catch (err) {
+    if (!res.headersSent) res.status(500).json({ error: err.message });
+    else res.end();
   }
 });
 

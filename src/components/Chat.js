@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { streamChat, chatWithCsvTools, CODE_KEYWORDS } from '../services/gemini';
+import { streamChat, chatWithCsvTools, chatWithYouTubeTools, CODE_KEYWORDS } from '../services/gemini';
 import { parseCsvToRows, executeTool, computeDatasetSummary, enrichWithEngagement, buildSlimCsv } from '../services/csvTools';
+import { executeYouTubeTool } from '../services/youtubeTools';
 import {
   getSessions,
   createSession,
@@ -11,6 +12,8 @@ import {
   loadMessages,
 } from '../services/mongoApi';
 import EngagementChart from './EngagementChart';
+import MetricVsTimeChart from './MetricVsTimeChart';
+import YouTubeChannelDownload from './YouTubeChannelDownload';
 import './Chat.css';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -110,7 +113,8 @@ function StructuredParts({ parts }) {
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export default function Chat({ username, onLogout }) {
+export default function Chat({ user, onLogout }) {
+  const username = user?.username ?? (typeof user === 'string' ? user : '');
   const [sessions, setSessions] = useState([]);
   const [activeSessionId, setActiveSessionId] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -124,6 +128,10 @@ export default function Chat({ username, onLogout }) {
   const [streaming, setStreaming] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [openMenuId, setOpenMenuId] = useState(null);
+  const [activeMainView, setActiveMainView] = useState('chat');
+  const [channelJsonData, setChannelJsonData] = useState(null);
+  const [channelJsonMeta, setChannelJsonMeta] = useState(null);
+  const [enlargeContent, setEnlargeContent] = useState(null);
 
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
@@ -227,7 +235,22 @@ export default function Chat({ username, onLogout }) {
     const files = [...e.dataTransfer.files];
 
     const csvFiles = files.filter((f) => f.name.endsWith('.csv') || f.type === 'text/csv');
+    const jsonFiles = files.filter((f) => f.name.endsWith('.json') || f.type === 'application/json');
     const imageFiles = files.filter((f) => f.type.startsWith('image/'));
+
+    if (jsonFiles.length > 0) {
+      try {
+        const text = await fileToText(jsonFiles[0]);
+        const parsed = JSON.parse(text);
+        const arr = Array.isArray(parsed) ? parsed : parsed.videos ? parsed.videos : [];
+        if (arr.length && (arr[0].title !== undefined || arr[0].video_url !== undefined)) {
+          setChannelJsonData(arr);
+          const channelName = parsed.channelTitle || jsonFiles[0].name.replace(/\.json$/i, '');
+          setChannelJsonMeta({ name: jsonFiles[0].name, count: arr.length, channelName });
+          setMessages((prev) => [...prev, { id: `json-${Date.now()}`, role: 'model', content: `📄 Loaded channel data: ${arr.length} videos${channelName ? ` from ${channelName}` : ''}.`, timestamp: new Date().toISOString() }]);
+        }
+      } catch (_) {}
+    }
 
     if (csvFiles.length > 0) {
       const file = csvFiles[0];
@@ -262,7 +285,22 @@ export default function Chat({ username, onLogout }) {
     e.target.value = '';
 
     const csvFiles = files.filter((f) => f.name.endsWith('.csv') || f.type === 'text/csv');
+    const jsonFiles = files.filter((f) => f.name.endsWith('.json') || f.type === 'application/json');
     const imageFiles = files.filter((f) => f.type.startsWith('image/'));
+
+    if (jsonFiles.length > 0) {
+      try {
+        const text = await fileToText(jsonFiles[0]);
+        const parsed = JSON.parse(text);
+        const arr = Array.isArray(parsed) ? parsed : parsed.videos ? parsed.videos : [];
+        if (arr.length && (arr[0].title !== undefined || arr[0].video_url !== undefined)) {
+          setChannelJsonData(arr);
+          const channelName = parsed.channelTitle || jsonFiles[0].name.replace(/\.json$/i, '');
+          setChannelJsonMeta({ name: jsonFiles[0].name, count: arr.length, channelName });
+          setMessages((prev) => [...prev, { id: `json-${Date.now()}`, role: 'model', content: `📄 Loaded channel data: ${arr.length} videos${channelName ? ` from ${channelName}` : ''}.`, timestamp: new Date().toISOString() }]);
+        }
+      } catch (_) {}
+    }
 
     if (csvFiles.length > 0) {
       const text = await fileToText(csvFiles[0]);
@@ -320,7 +358,7 @@ export default function Chat({ username, onLogout }) {
 
   const handleSend = async () => {
     const text = input.trim();
-    if ((!text && !images.length && !csvContext) || streaming || !activeSessionId) return;
+    if ((!text && !images.length && !csvContext && !channelJsonMeta) || streaming || !activeSessionId) return;
 
     // Lazily create the session in DB on the very first message
     let sessionId = activeSessionId;
@@ -347,7 +385,8 @@ export default function Chat({ username, onLogout }) {
     //   useCodeExecution — Python explicitly needed (regression, histogram, etc.)
     //   else            — Google Search streaming (also used for "tell me about this file")
     const useTools = !!sessionCsvRows && !wantPythonOnly && !wantCode && !capturedCsv;
-    const useCodeExecution = wantPythonOnly || wantCode;
+    const useYouTubeTools = !!channelJsonData && channelJsonData.length > 0;
+    const useCodeExecution = wantPythonOnly || wantCode && !useYouTubeTools;
 
     // ── Build prompt ─────────────────────────────────────────────────────────
     // sessionSummary: auto-computed column stats, included with every message
@@ -386,10 +425,14 @@ ${sessionSummary}${slimCsvBlock}
       ? `[CSV columns: ${sessionCsvHeaders?.join(', ')}]\n\n${sessionSummary}\n\n---\n\n`
       : '';
 
+    const channelJsonPrefix = channelJsonData?.length
+      ? `[YouTube channel JSON loaded: ${channelJsonData.length} videos${channelJsonMeta?.channelName ? ` from ${channelJsonMeta.channelName}` : ''}. Video titles and indices are available. Use the tools to plot, play, or compute statistics.]\n\n---\n\n`
+      : '';
+
     // userContent  — displayed in bubble and stored in MongoDB (never contains base64)
     // promptForGemini — sent to the Gemini API (may contain the full prefix)
-    const userContent = text || (images.length ? '(Image)' : '(CSV attached)');
-    const promptForGemini = csvPrefix + (text || (images.length ? 'What do you see in this image?' : 'Please analyze this CSV data.'));
+    const userContent = text || (images.length ? '(Image)' : csvContext ? '(CSV attached)' : channelJsonMeta ? '(Channel JSON attached)' : '');
+    const promptForGemini = csvPrefix + channelJsonPrefix + (text || (images.length ? 'What do you see in this image?' : channelJsonMeta ? 'I have loaded channel data.' : 'Please analyze this CSV data.'));
 
     const userMsg = {
       id: `u-${Date.now()}`,
@@ -432,14 +475,39 @@ ${sessionSummary}${slimCsvBlock}
     let toolCalls = [];
 
     try {
-      if (useTools) {
+      if (useYouTubeTools) {
+        const channelVideosSummary = `[Loaded ${channelJsonData.length} videos. Titles (by index): ${channelJsonData.slice(0, 20).map((v, i) => `${i}: ${(v.title || '').slice(0, 50)}`).join('; ')}${channelJsonData.length > 20 ? '...' : ''}]`;
+        const { text: answer, charts: returnedCharts, toolCalls: returnedCalls } = await chatWithYouTubeTools(
+          history,
+          promptForGemini,
+          channelVideosSummary,
+          (toolName, args) => executeYouTubeTool(toolName, args, channelJsonData, capturedImages[0]?.data),
+          user
+        );
+        fullContent = answer;
+        toolCharts = returnedCharts || [];
+        toolCalls = returnedCalls || [];
+        setMessages((m) =>
+          m.map((msg) =>
+            msg.id === assistantId
+              ? {
+                  ...msg,
+                  content: fullContent,
+                  charts: toolCharts.length ? toolCharts : undefined,
+                  toolCalls: toolCalls.length ? toolCalls : undefined,
+                }
+              : msg
+          )
+        );
+      } else if (useTools) {
         // ── Function-calling path: Gemini picks tool + args, JS executes ──────
         console.log('[Chat] useTools=true | rows:', sessionCsvRows.length, '| headers:', sessionCsvHeaders);
         const { text: answer, charts: returnedCharts, toolCalls: returnedCalls } = await chatWithCsvTools(
           history,
           promptForGemini,
           sessionCsvHeaders,
-          (toolName, args) => executeTool(toolName, args, sessionCsvRows)
+          (toolName, args) => executeTool(toolName, args, sessionCsvRows),
+          user
         );
         fullContent = answer;
         toolCharts = returnedCharts || [];
@@ -460,7 +528,7 @@ ${sessionSummary}${slimCsvBlock}
         );
       } else {
         // ── Streaming path: code execution or search ─────────────────────────
-        for await (const chunk of streamChat(history, promptForGemini, imageParts, useCodeExecution)) {
+        for await (const chunk of streamChat(history, promptForGemini, imageParts, useCodeExecution, user)) {
           if (abortRef.current) break;
           if (chunk.type === 'text') {
             fullContent += chunk.text;
@@ -535,7 +603,23 @@ ${sessionSummary}${slimCsvBlock}
       <aside className="chat-sidebar">
         <div className="sidebar-top">
           <h1 className="sidebar-title">Chat</h1>
-          <button className="new-chat-btn" onClick={handleNewChat}>
+          <nav className="sidebar-nav-tabs">
+            <button
+              type="button"
+              className={`sidebar-tab ${activeMainView === 'chat' ? 'active' : ''}`}
+              onClick={() => setActiveMainView('chat')}
+            >
+              Chat
+            </button>
+            <button
+              type="button"
+              className={`sidebar-tab ${activeMainView === 'yt-download' ? 'active' : ''}`}
+              onClick={() => setActiveMainView('yt-download')}
+            >
+              YouTube Channel Download
+            </button>
+          </nav>
+          <button className="new-chat-btn" onClick={handleNewChat} style={{ display: activeMainView === 'chat' ? 'block' : 'none' }}>
             + New Chat
           </button>
         </div>
@@ -584,6 +668,9 @@ ${sessionSummary}${slimCsvBlock}
 
       {/* ── Main chat area ───────────────────────── */}
       <div className="chat-main">
+        {activeMainView === 'yt-download' ? (
+          <YouTubeChannelDownload />
+        ) : (
         <>
         <header className="chat-header">
           <h2 className="chat-header-title">{activeSession?.title ?? 'New Chat'}</h2>
@@ -648,14 +735,14 @@ ${sessionSummary}${slimCsvBlock}
                       <div key={i} className="tool-call-item">
                         <span className="tool-call-name">{tc.name}</span>
                         <span className="tool-call-args">{JSON.stringify(tc.args)}</span>
-                        {tc.result && !tc.result._chartType && (
+                        {tc.result && !tc.result._chartType && !tc.result._imageResult && !tc.result._videoCard && (
                           <span className="tool-call-result">
                             → {JSON.stringify(tc.result).slice(0, 200)}
                             {JSON.stringify(tc.result).length > 200 ? '…' : ''}
                           </span>
                         )}
-                        {tc.result?._chartType && (
-                          <span className="tool-call-result">→ rendered chart</span>
+                        {(tc.result?._chartType || tc.result?._imageResult || tc.result?._videoCard) && (
+                          <span className="tool-call-result">→ rendered below</span>
                         )}
                       </div>
                     ))}
@@ -663,13 +750,59 @@ ${sessionSummary}${slimCsvBlock}
                 </details>
               )}
 
+              {/* YouTube tool results: video cards, generated images, stats */}
+              {m.toolCalls?.map((tc, ti) => {
+                const r = tc.result;
+                if (r?._videoCard && r.video_url) {
+                  return (
+                    <a key={ti} href={r.video_url} target="_blank" rel="noreferrer" className="chat-video-card">
+                      {r.thumbnail && <img src={r.thumbnail} alt="" className="chat-video-card-thumb" />}
+                      <span className="chat-video-card-title">{r.title || 'Video'}</span>
+                    </a>
+                  );
+                }
+                if (r?._imageResult && r.data && !r.error) {
+                  return (
+                    <div key={ti} className="chat-generated-image-wrap">
+                      <img
+                        src={`data:${r.mimeType || 'image/png'};base64,${r.data}`}
+                        alt="Generated"
+                        className="chat-generated-image"
+                        onClick={() => setEnlargeContent({ type: 'image', data: r.data, mimeType: r.mimeType })}
+                      />
+                      <button type="button" className="chat-download-img-btn" onClick={(e) => { e.stopPropagation(); const a = document.createElement('a'); a.href = `data:${r.mimeType};base64,${r.data}`; a.download = 'generated.png'; a.click(); }}>Download</button>
+                    </div>
+                  );
+                }
+                if (r?.field !== undefined && r.mean !== undefined) {
+                  return (
+                    <div key={ti} className="chat-stats-block">
+                      <p className="chat-stats-title">📊 Statistics for {r.field}:</p>
+                      <p className="chat-stats-row">Mean: {Number(r.mean).toLocaleString()}</p>
+                      <p className="chat-stats-row">Median: {Number(r.median).toLocaleString()}</p>
+                      <p className="chat-stats-row">Std Dev: {Number(r.std).toLocaleString()}</p>
+                      <p className="chat-stats-row">Min: {Number(r.min).toLocaleString()}</p>
+                      <p className="chat-stats-row">Max: {Number(r.max).toLocaleString()}</p>
+                    </div>
+                  );
+                }
+                return null;
+              })}
               {/* Engagement charts from tool calls */}
               {m.charts?.map((chart, ci) =>
                 chart._chartType === 'engagement' ? (
                   <EngagementChart
-                    key={ci}
+                    key={`eng-${ci}`}
                     data={chart.data}
                     metricColumn={chart.metricColumn}
+                  />
+                ) : chart._chartType === 'metricVsTime' ? (
+                  <MetricVsTimeChart
+                    key={`metric-${ci}`}
+                    data={chart.data}
+                    metric={chart.metric}
+                    title={chart.title}
+                    onEnlarge={() => setEnlargeContent({ type: 'chart', chart })}
                   />
                 ) : null
               )}
@@ -699,10 +832,21 @@ ${sessionSummary}${slimCsvBlock}
           <div ref={bottomRef} />
         </div>
 
-        {dragOver && <div className="chat-drop-overlay">Drop CSV or images here</div>}
+        {dragOver && <div className="chat-drop-overlay">Drop CSV, JSON, or images here</div>}
 
         {/* ── Input area ── */}
         <div className="chat-input-area">
+          {/* Channel JSON chip */}
+          {channelJsonMeta && (
+            <div className="csv-chip channel-json-chip">
+              <span className="csv-chip-icon">📄</span>
+              <span className="csv-chip-name">{channelJsonMeta.name}</span>
+              <span className="csv-chip-meta">
+                {channelJsonMeta.count} videos{channelJsonMeta.channelName ? ` · ${channelJsonMeta.channelName}` : ''}
+              </span>
+              <button className="csv-chip-remove" onClick={() => { setChannelJsonMeta(null); setChannelJsonData(null); }} aria-label="Remove JSON">×</button>
+            </div>
+          )}
           {/* CSV chip */}
           {csvContext && (
             <div className="csv-chip">
@@ -731,7 +875,7 @@ ${sessionSummary}${slimCsvBlock}
           <input
             ref={fileInputRef}
             type="file"
-            accept="image/*,.csv,text/csv"
+            accept="image/*,.csv,text/csv,.json,application/json"
             multiple
             style={{ display: 'none' }}
             onChange={handleFileSelect}
@@ -764,7 +908,7 @@ ${sessionSummary}${slimCsvBlock}
             ) : (
               <button
                 onClick={handleSend}
-                disabled={!input.trim() && !images.length && !csvContext}
+                disabled={!input.trim() && !images.length && !csvContext && !channelJsonMeta}
               >
                 Send
               </button>
@@ -772,7 +916,29 @@ ${sessionSummary}${slimCsvBlock}
           </div>
         </div>
         </>
+        )}
       </div>
+      {enlargeContent && (
+        <div className="chat-enlarge-overlay" onClick={() => setEnlargeContent(null)}>
+          <div className="chat-enlarge-modal" onClick={(e) => e.stopPropagation()}>
+            <button type="button" className="chat-enlarge-close" onClick={() => setEnlargeContent(null)} aria-label="Close">×</button>
+            {enlargeContent.type === 'image' && (
+              <>
+                <img src={`data:${enlargeContent.mimeType || 'image/png'};base64,${enlargeContent.data}`} alt="Enlarged" className="chat-enlarge-img" />
+                <a href={`data:${enlargeContent.mimeType};base64,${enlargeContent.data}`} download="generated.png" className="chat-enlarge-download">Download</a>
+              </>
+            )}
+            {enlargeContent.type === 'chart' && enlargeContent.chart && (
+              <>
+                <div className="chat-enlarge-chart" ref={(el) => { if (el && !el._chartRef) { el._chartRef = true; } }}>
+                  <MetricVsTimeChart data={enlargeContent.chart.data} metric={enlargeContent.chart.metric} title={enlargeContent.chart.title} />
+                </div>
+                <a href="#" className="chat-enlarge-download" onClick={(e) => { e.preventDefault(); const el = document.querySelector('.chat-enlarge-chart'); if (el) { const svg = el.querySelector('svg'); if (svg) { const s = new XMLSerializer().serializeToString(svg); const blob = new Blob([s], { type: 'image/svg+xml' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'chart.svg'; a.click(); URL.revokeObjectURL(a.href); } } }}>Download (SVG)</a>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

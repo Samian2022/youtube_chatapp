@@ -975,3 +975,335 @@
 .chat-empty-state p {
   margin: 0;
 }
+
+/* ── Sidebar tabs (Chat / YouTube Channel Download) ───────────────────────── */
+
+.sidebar-nav-tabs {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-bottom: 0.75rem;
+}
+
+.sidebar-tab {
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.sidebar-tab:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.sidebar-tab.active {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  font-weight: 600;
+}
+
+/* ── YouTube Channel Download page ──────────────────────────────────────── */
+
+.yt-download-page {
+  padding: 1.5rem 2rem;
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+.yt-download-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #fff;
+  margin: 0 0 1.25rem;
+}
+
+.yt-download-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.yt-download-input {
+  width: 100%;
+  padding: 0.65rem 0.85rem;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+  font-size: 0.9rem;
+}
+
+.yt-download-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.yt-download-num {
+  width: 4rem;
+  padding: 0.4rem;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+  font-size: 0.9rem;
+}
+
+.yt-download-btn {
+  padding: 0.6rem 1rem;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 8px;
+  color: #fff;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.yt-download-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.yt-download-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.yt-download-progress-wrap {
+  margin: 1rem 0;
+}
+
+.yt-download-progress-bar {
+  height: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 0.5rem;
+}
+
+.yt-download-progress-fill {
+  height: 100%;
+  background: #4f46e5;
+  border-radius: 4px;
+  transition: width 0.2s;
+}
+
+.yt-download-progress-text {
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.7);
+  margin: 0;
+}
+
+.yt-download-error {
+  color: #f87171;
+  font-size: 0.9rem;
+  margin: 0.5rem 0;
+}
+
+.yt-download-summary {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+}
+
+.yt-download-summary-text {
+  color: rgba(255, 255, 255, 0.9);
+  margin: 0 0 0.75rem;
+  font-size: 0.95rem;
+}
+
+.yt-download-json-btn {
+  padding: 0.5rem 1rem;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  color: #fff;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.yt-download-json-btn:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+/* ── YouTube tool results in chat ─────────────────────────────────────────── */
+
+.chat-video-card {
+  display: inline-flex;
+  flex-direction: column;
+  max-width: 320px;
+  margin: 0.5rem 0;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.06);
+  text-decoration: none;
+  color: inherit;
+  transition: background 0.2s;
+}
+
+.chat-video-card:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.chat-video-card-thumb {
+  width: 100%;
+  aspect-ratio: 16/9;
+  object-fit: cover;
+}
+
+.chat-video-card-title {
+  padding: 0.6rem 0.75rem;
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.chat-generated-image-wrap {
+  margin: 0.5rem 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.chat-generated-image {
+  max-width: 100%;
+  max-height: 320px;
+  border-radius: 8px;
+  cursor: pointer;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.chat-download-img-btn {
+  padding: 0.35rem 0.75rem;
+  font-size: 0.8rem;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  color: #fff;
+  cursor: pointer;
+}
+
+.chat-stats-block {
+  margin: 0.5rem 0;
+  padding: 0.75rem 1rem;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  font-size: 0.9rem;
+}
+
+.chat-stats-title {
+  font-weight: 700;
+  margin: 0 0 0.5rem;
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.chat-stats-row {
+  margin: 0.2rem 0;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+/* Metric vs time chart */
+.metric-vs-time-wrap {
+  margin: 0.75rem 0;
+}
+
+.metric-vs-time-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.8);
+  margin: 0 0 0.5rem;
+}
+
+.metric-vs-time-chart {
+  cursor: pointer;
+  border-radius: 8px;
+  padding: 0.5rem;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.metric-vs-time-tooltip {
+  background: rgba(15, 15, 35, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.8rem;
+  color: #e2e8f0;
+}
+
+.metric-vs-time-enlarge-btn {
+  margin-top: 0.5rem;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.8rem;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  color: #fff;
+  cursor: pointer;
+}
+
+/* Enlarge modal */
+.chat-enlarge-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.chat-enlarge-modal {
+  position: relative;
+  max-width: 90vw;
+  max-height: 90vh;
+  overflow: auto;
+  background: #1a1a2e;
+  border-radius: 12px;
+  padding: 1.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.chat-enlarge-close {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  font-size: 1.25rem;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.chat-enlarge-img {
+  max-width: 85vw;
+  max-height: 80vh;
+  border-radius: 8px;
+}
+
+.chat-enlarge-download {
+  display: inline-block;
+  margin-top: 0.75rem;
+  padding: 0.5rem 1rem;
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+  border-radius: 8px;
+  text-decoration: none;
+  font-size: 0.9rem;
+}
+
+.chat-enlarge-chart {
+  min-width: 480px;
+  min-height: 320px;
+}

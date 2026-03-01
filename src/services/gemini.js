@@ -1,5 +1,6 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { CSV_TOOL_DECLARATIONS } from './csvTools';
+import { YOUTUBE_TOOL_DECLARATIONS } from './youtubeTools';
 
 const genAI = new GoogleGenerativeAI(process.env.REACT_APP_GEMINI_API_KEY || '');
 
@@ -23,6 +24,13 @@ async function loadSystemPrompt() {
   return cachedPrompt;
 }
 
+function applyUserToPrompt(text, user) {
+  if (!text || !user) return text;
+  return text
+    .replace(/\{\{firstName\}\}/g, user.firstName ?? '')
+    .replace(/\{\{lastName\}\}/g, user.lastName ?? '');
+}
+
 // Yields:
 //   { type: 'text', text }           — streaming text chunks
 //   { type: 'fullResponse', parts }  — when code was executed; replaces streamed text
@@ -33,8 +41,9 @@ async function loadSystemPrompt() {
 // useCodeExecution: pass true to use codeExecution tool (CSV/analysis),
 //                   false (default) to use googleSearch tool.
 // Note: Gemini does not support both tools simultaneously.
-export const streamChat = async function* (history, newMessage, imageParts = [], useCodeExecution = false) {
-  const systemInstruction = await loadSystemPrompt();
+export const streamChat = async function* (history, newMessage, imageParts = [], useCodeExecution = false, user = null) {
+  let systemInstruction = await loadSystemPrompt();
+  systemInstruction = applyUserToPrompt(systemInstruction, user);
   const tools = useCodeExecution ? [CODE_EXEC_TOOL] : [SEARCH_TOOL];
   const model = genAI.getGenerativeModel({
     model: MODEL,
@@ -128,8 +137,9 @@ export const streamChat = async function* (history, newMessage, imageParts = [],
 // executeFn(toolName, args) → plain JS object with the result
 // Returns the final text response from the model.
 
-export const chatWithCsvTools = async (history, newMessage, csvHeaders, executeFn) => {
-  const systemInstruction = await loadSystemPrompt();
+export const chatWithCsvTools = async (history, newMessage, csvHeaders, executeFn, user = null) => {
+  let systemInstruction = await loadSystemPrompt();
+  systemInstruction = applyUserToPrompt(systemInstruction, user);
   const model = genAI.getGenerativeModel({
     model: MODEL,
     tools: [{ functionDeclarations: CSV_TOOL_DECLARATIONS }],
@@ -187,6 +197,53 @@ export const chatWithCsvTools = async (history, newMessage, csvHeaders, executeF
       await chat.sendMessage([
         { functionResponse: { name, response: { result: toolResult } } },
       ])
+    ).response;
+  }
+
+  return { text: response.text(), charts, toolCalls };
+};
+
+// ── Function-calling chat for YouTube tools (channel JSON loaded) ─────────────
+export const chatWithYouTubeTools = async (history, newMessage, channelVideosSummary, executeFn, user = null) => {
+  let systemInstruction = await loadSystemPrompt();
+  systemInstruction = applyUserToPrompt(systemInstruction, user);
+  const model = genAI.getGenerativeModel({
+    model: MODEL,
+    tools: [{ functionDeclarations: YOUTUBE_TOOL_DECLARATIONS }],
+  });
+
+  const baseHistory = history.map((m) => ({
+    role: m.role === 'user' ? 'user' : 'model',
+    parts: [{ text: m.content || '' }],
+  }));
+
+  const chatHistory = systemInstruction
+    ? [
+        {
+          role: 'user',
+          parts: [{ text: `Follow these instructions in every response:\n\n${systemInstruction}` }],
+        },
+        { role: 'model', parts: [{ text: "Got it! I'll follow those instructions." }] },
+        ...baseHistory,
+      ]
+    : baseHistory;
+
+  const chat = model.startChat({ history: chatHistory });
+  const msgWithContext = channelVideosSummary ? `${channelVideosSummary}\n\n${newMessage}` : newMessage;
+  let response = (await chat.sendMessage(msgWithContext)).response;
+  const charts = [];
+  const toolCalls = [];
+
+  for (let round = 0; round < 5; round++) {
+    const parts = response.candidates?.[0]?.content?.parts || [];
+    const funcCall = parts.find((p) => p.functionCall);
+    if (!funcCall) break;
+    const { name, args } = funcCall.functionCall;
+    const toolResult = await Promise.resolve(executeFn(name, args));
+    toolCalls.push({ name, args, result: toolResult });
+    if (toolResult?._chartType) charts.push(toolResult);
+    response = (
+      await chat.sendMessage([{ functionResponse: { name, response: { result: toolResult } } }])
     ).response;
   }
 
