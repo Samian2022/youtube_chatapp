@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+@import './styles/variables.css';
 
 * {
   box-sizing: border-box;
@@ -12,19 +12,13 @@ body {
 }
 
 body {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  line-height: var(--leading-normal);
+  color: var(--text-primary);
+  background: var(--bg-primary);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-
-  /* Deep gradient background — glass panels float on top of this */
-  background: #0d1117;
-  background-image:
-    radial-gradient(ellipse at 20% 50%, rgba(99, 102, 241, 0.18) 0%, transparent 55%),
-    radial-gradient(ellipse at 80% 20%, rgba(139, 92, 246, 0.14) 0%, transparent 50%),
-    radial-gradient(ellipse at 60% 80%, rgba(59, 130, 246, 0.12) 0%, transparent 50%),
-    linear-gradient(160deg, #0d1117 0%, #131929 50%, #0d1230 100%);
-  background-attachment: fixed;
-  color: rgba(255, 255, 255, 0.85);
 }
 
 #root {
@@ -32,5 +26,10 @@ body {
 }
 
 code {
-  font-family: 'Fira Code', 'Cascadia Code', Consolas, monospace;
+  font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+}
+
+:focus-visible {
+  outline: 2px solid var(--yale-blue-muted);
+  outline-offset: 2px;
 }

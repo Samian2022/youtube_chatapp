@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { Check } from 'lucide-react';
 
 const API = process.env.REACT_APP_API_URL || '';
 
@@ -75,6 +76,7 @@ export default function YouTubeChannelDownload() {
   return (
     <div className="yt-download-page">
       <h2 className="yt-download-title">YouTube Channel Download</h2>
+      <p className="yt-download-subtitle">Fetch video metadata from any YouTube channel</p>
       <div className="yt-download-form">
         <input
           type="text"
@@ -85,7 +87,8 @@ export default function YouTubeChannelDownload() {
         />
         <div className="yt-download-row">
           <label>
-            Max videos:{' '}
+            Max videos <span className="yt-download-hint">(default 10, max 100)</span>
+            {' '}
             <input
               type="number"
               min={1}
@@ -116,6 +119,9 @@ export default function YouTubeChannelDownload() {
       {error && <p className="yt-download-error">{error}</p>}
       {result && !progress && (
         <div className="yt-download-summary">
+          <div className="yt-download-summary-icon" aria-hidden>
+            <Check size={20} strokeWidth={2.5} />
+          </div>
           <p className="yt-download-summary-text">
             Downloaded {result.videos.length} videos from {result.channelTitle}.
           </p>

@@ -53,61 +53,85 @@ export default function Auth({ onLogin }) {
       <div className="auth-card">
         <div className="auth-header">
           <h1>Chat</h1>
-          <p className="auth-subtitle">Yale · Modern</p>
+          <span className="auth-accent-line" aria-hidden />
         </div>
         <form onSubmit={handleSubmit} className="auth-form">
-          <input
-            type="text"
-            placeholder="Username"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            required
-            autoComplete="username"
-          />
+          <div className="auth-field">
+            <label htmlFor="auth-username">Username</label>
+            <input
+              id="auth-username"
+              type="text"
+              placeholder="Username"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              required
+              autoComplete="username"
+            />
+          </div>
           {mode === 'create' && (
             <>
-              <input
-                type="text"
-                placeholder="First Name"
-                value={firstName}
-                onChange={(e) => setFirstName(e.target.value)}
-                required
-                autoComplete="given-name"
-              />
-              <input
-                type="text"
-                placeholder="Last Name"
-                value={lastName}
-                onChange={(e) => setLastName(e.target.value)}
-                required
-                autoComplete="family-name"
-              />
-              <input
-                type="email"
-                placeholder="Email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                autoComplete="email"
-              />
+              <div className="auth-field">
+                <label htmlFor="auth-firstName">First Name</label>
+                <input
+                  id="auth-firstName"
+                  type="text"
+                  placeholder="First Name"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  required
+                  autoComplete="given-name"
+                />
+              </div>
+              <div className="auth-field">
+                <label htmlFor="auth-lastName">Last Name</label>
+                <input
+                  id="auth-lastName"
+                  type="text"
+                  placeholder="Last Name"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  required
+                  autoComplete="family-name"
+                />
+              </div>
+              <div className="auth-field">
+                <label htmlFor="auth-email">Email</label>
+                <input
+                  id="auth-email"
+                  type="email"
+                  placeholder="Email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  autoComplete="email"
+                />
+              </div>
             </>
           )}
-          <input
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            autoComplete={mode === 'create' ? 'new-password' : 'current-password'}
-          />
+          <div className="auth-field">
+            <label htmlFor="auth-password">Password</label>
+            <input
+              id="auth-password"
+              type="password"
+              placeholder="Password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              autoComplete={mode === 'create' ? 'new-password' : 'current-password'}
+            />
+          </div>
           {error && (
-        <p className="auth-error">
-          {error}
-          {error.includes('already exists') && ' Try logging in instead.'}
-        </p>
-      )}
-          <button type="submit" disabled={loading}>
-            {loading ? '...' : mode === 'login' ? 'Log in' : 'Create account'}
+            <p className="auth-error" role="alert">
+              {error}
+              {error.includes('already exists') && ' Try logging in instead.'}
+            </p>
+          )}
+          <button
+            type="submit"
+            disabled={loading}
+            className={loading ? 'auth-loading' : ''}
+          >
+            {loading ? '' : mode === 'login' ? 'Log in' : 'Create account'}
           </button>
         </form>
         <button

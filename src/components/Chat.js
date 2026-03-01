@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { Plus, MoreVertical, Trash2, LogOut, Paperclip, ArrowUp, Square, Sparkles, Play, X } from 'lucide-react';
 import { streamChat, chatWithCsvTools, chatWithYouTubeTools, CODE_KEYWORDS } from '../services/gemini';
 import { parseCsvToRows, executeTool, computeDatasetSummary, enrichWithEngagement, buildSlimCsv } from '../services/csvTools';
 import { executeYouTubeTool } from '../services/youtubeTools';
@@ -17,6 +18,19 @@ import YouTubeChannelDownload from './YouTubeChannelDownload';
 import './Chat.css';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+
+const userInitials = (name) => {
+  if (!name || !String(name).trim()) return '?';
+  const parts = String(name).trim().split(/\s+/);
+  if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase().slice(0, 2);
+  return name.slice(0, 2).toUpperCase();
+};
+
+const EMPTY_SUGGESTIONS = [
+  'Analyze a YouTube channel',
+  'Upload a CSV for insights',
+  'Generate an image',
+];
 
 const chatTitle = () => {
   const d = new Date();
@@ -220,6 +234,13 @@ export default function Chat({ user, onLogout }) {
     document.addEventListener('click', handler);
     return () => document.removeEventListener('click', handler);
   }, [openMenuId]);
+
+  useEffect(() => {
+    if (!enlargeContent) return;
+    const handler = (e) => { if (e.key === 'Escape') setEnlargeContent(null); };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [enlargeContent]);
 
   // ── Session management ──────────────────────────────────────────────────────
 
@@ -663,8 +684,9 @@ ${sessionSummary}${slimCsvBlock}
               YouTube Channel Download
             </button>
           </nav>
-          <button className="new-chat-btn" onClick={handleNewChat} style={{ display: activeMainView === 'chat' ? 'block' : 'none' }}>
-            + New Chat
+          <button type="button" className="new-chat-btn" onClick={handleNewChat} style={{ display: activeMainView === 'chat' ? 'flex' : 'none' }} aria-label="New chat">
+            <Plus size={18} strokeWidth={1.75} />
+            <span>New Chat</span>
           </button>
         </div>
 
@@ -685,15 +707,20 @@ ${sessionSummary}${slimCsvBlock}
                   e.stopPropagation();
                   setOpenMenuId(openMenuId === session.id ? null : session.id);
                 }}
+                role="button"
+                aria-label="Session menu"
+                tabIndex={0}
+                onKeyDown={(e) => e.key === 'Enter' && setOpenMenuId(openMenuId === session.id ? null : session.id)}
               >
-                <span className="three-dots">⋮</span>
+                <MoreVertical size={20} strokeWidth={1.75} />
                 {openMenuId === session.id && (
                   <div className="session-dropdown">
                     <button
+                      type="button"
                       className="session-delete-btn"
                       onClick={(e) => handleDeleteSession(session.id, e)}
                     >
-                      Delete
+                      <Trash2 size={14} strokeWidth={1.75} /> Delete
                     </button>
                   </div>
                 )}
@@ -703,9 +730,13 @@ ${sessionSummary}${slimCsvBlock}
         </div>
 
         <div className="sidebar-footer">
-          <span className="sidebar-username">{username}</span>
-          <button onClick={onLogout} className="sidebar-logout">
-            Log out
+          <div className="sidebar-user-wrap">
+            <span className="sidebar-avatar" aria-hidden>{userInitials(user?.firstName || username)}</span>
+            <span className="sidebar-username">{username}</span>
+          </div>
+          <button type="button" onClick={onLogout} className="sidebar-logout" aria-label="Log out">
+            <LogOut size={16} strokeWidth={1.75} />
+            <span>Log out</span>
           </button>
         </div>
       </aside>
@@ -726,12 +757,38 @@ ${sessionSummary}${slimCsvBlock}
           onDragLeave={() => setDragOver(false)}
           onDrop={handleDrop}
         >
+          <div className="chat-messages-inner">
+          {messages.length === 0 && !streaming && (
+            <div className="chat-empty-state">
+              <h2>What can I help you with?</h2>
+              <div className="chat-empty-suggestions">
+                {EMPTY_SUGGESTIONS.map((label, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    className="chat-empty-suggestion"
+                    onClick={() => setInput(label)}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
           {messages.map((m) => (
             <div key={m.id} className={`chat-msg ${m.role}`}>
+              {m.role === 'user' ? (
+                <div className="chat-msg-user-avatar" aria-hidden>{userInitials(username)}</div>
+              ) : (
+                <div className="chat-msg-lisa-avatar" aria-hidden>
+                  <Sparkles size={14} strokeWidth={1.75} />
+                </div>
+              )}
+              <div className="chat-msg-body">
               <div className="chat-msg-meta">
-                <span className="chat-msg-role">{m.role === 'user' ? username : 'Lisa'}</span>
+                <span className={`chat-msg-role ${m.role === 'model' ? 'lisa-role' : ''}`}>{m.role === 'user' ? username : 'Lisa'}</span>
                 <span className="chat-msg-time">
-                  {new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  · {new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </span>
               </div>
 
@@ -800,7 +857,14 @@ ${sessionSummary}${slimCsvBlock}
                 if (r?._videoCard && r.video_url) {
                   return (
                     <a key={ti} href={r.video_url} target="_blank" rel="noreferrer" className="chat-video-card">
-                      {r.thumbnail && <img src={r.thumbnail} alt="" className="chat-video-card-thumb" />}
+                      {r.thumbnail ? (
+                        <>
+                          <img src={r.thumbnail} alt="" className="chat-video-card-thumb" />
+                          <span className="chat-video-card-play" aria-hidden><Play size={18} fill="currentColor" /></span>
+                        </>
+                      ) : (
+                        <span className="chat-video-card-thumb-placeholder" aria-hidden><Play size={24} /></span>
+                      )}
                       <span className="chat-video-card-title">{r.title || 'Video'}</span>
                     </a>
                   );
@@ -819,14 +883,24 @@ ${sessionSummary}${slimCsvBlock}
                   );
                 }
                 if (r?.field !== undefined && r.mean !== undefined) {
+                  const stats = [
+                    { label: 'Mean', value: r.mean },
+                    { label: 'Median', value: r.median },
+                    { label: 'Std Dev', value: r.std },
+                    { label: 'Min', value: r.min },
+                    { label: 'Max', value: r.max },
+                  ];
                   return (
                     <div key={ti} className="chat-stats-block">
-                      <p className="chat-stats-title">📊 Statistics for {r.field}:</p>
-                      <p className="chat-stats-row">Mean: {Number(r.mean).toLocaleString()}</p>
-                      <p className="chat-stats-row">Median: {Number(r.median).toLocaleString()}</p>
-                      <p className="chat-stats-row">Std Dev: {Number(r.std).toLocaleString()}</p>
-                      <p className="chat-stats-row">Min: {Number(r.min).toLocaleString()}</p>
-                      <p className="chat-stats-row">Max: {Number(r.max).toLocaleString()}</p>
+                      <p className="chat-stats-title">Statistics for {r.field}</p>
+                      <div className="chat-stats-grid">
+                        {stats.map((s, i) => (
+                          <div key={i}>
+                            <p className="chat-stats-row">{s.label}</p>
+                            <p className="chat-stats-value">{Number(s.value).toLocaleString()}</p>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   );
                 }
@@ -871,15 +945,18 @@ ${sessionSummary}${slimCsvBlock}
                   )}
                 </div>
               )}
+              </div>
             </div>
           ))}
           <div ref={bottomRef} />
+          </div>
         </div>
 
         {dragOver && <div className="chat-drop-overlay">Drop CSV, JSON, or images here</div>}
 
         {/* ── Input area ── */}
         <div className="chat-input-area">
+          <div className="chat-input-area-inner">
           {/* Channel JSON chip */}
           {channelJsonMeta && (
             <div className="csv-chip channel-json-chip">
@@ -931,9 +1008,10 @@ ${sessionSummary}${slimCsvBlock}
               className="attach-btn"
               onClick={() => fileInputRef.current?.click()}
               disabled={streaming}
-              title="Attach image or CSV"
+              title="Attach image, CSV, or JSON"
+              aria-label="Attach file"
             >
-              📎
+              <Paperclip size={20} strokeWidth={1.75} />
             </button>
             <input
               ref={inputRef}
@@ -946,26 +1024,32 @@ ${sessionSummary}${slimCsvBlock}
               disabled={streaming}
             />
             {streaming ? (
-              <button onClick={handleStop} className="stop-btn">
-                ■ Stop
+              <button type="button" onClick={handleStop} className="stop-btn" aria-label="Stop">
+                <Square size={16} fill="currentColor" /> Stop
               </button>
             ) : (
               <button
+                type="button"
+                className="send-btn"
                 onClick={handleSend}
                 disabled={!input.trim() && !images.length && !csvContext && !channelJsonMeta}
+                aria-label="Send"
               >
-                Send
+                <ArrowUp size={18} strokeWidth={1.75} />
               </button>
             )}
+          </div>
           </div>
         </div>
         </>
         )}
       </div>
       {enlargeContent && (
-        <div className="chat-enlarge-overlay" onClick={() => setEnlargeContent(null)}>
+        <div className="chat-enlarge-overlay" onClick={() => setEnlargeContent(null)} role="dialog" aria-modal="true" aria-label="Enlarged content">
           <div className="chat-enlarge-modal" onClick={(e) => e.stopPropagation()}>
-            <button type="button" className="chat-enlarge-close" onClick={() => setEnlargeContent(null)} aria-label="Close">×</button>
+            <button type="button" className="chat-enlarge-close" onClick={() => setEnlargeContent(null)} aria-label="Close">
+              <X size={20} strokeWidth={1.75} />
+            </button>
             {enlargeContent.type === 'image' && (
               <>
                 <img src={`data:${enlargeContent.mimeType || 'image/png'};base64,${enlargeContent.data}`} alt="Enlarged" className="chat-enlarge-img" />
@@ -977,7 +1061,27 @@ ${sessionSummary}${slimCsvBlock}
                 <div className="chat-enlarge-chart" ref={(el) => { if (el && !el._chartRef) { el._chartRef = true; } }}>
                   <MetricVsTimeChart data={enlargeContent.chart.data} metric={enlargeContent.chart.metric} title={enlargeContent.chart.title} />
                 </div>
-                <a href="#" className="chat-enlarge-download" onClick={(e) => { e.preventDefault(); const el = document.querySelector('.chat-enlarge-chart'); if (el) { const svg = el.querySelector('svg'); if (svg) { const s = new XMLSerializer().serializeToString(svg); const blob = new Blob([s], { type: 'image/svg+xml' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'chart.svg'; a.click(); URL.revokeObjectURL(a.href); } } }}>Download (SVG)</a>
+                <button
+                  type="button"
+                  className="chat-enlarge-download"
+                  onClick={() => {
+                    const el = document.querySelector('.chat-enlarge-chart');
+                    if (el) {
+                      const svg = el.querySelector('svg');
+                      if (svg) {
+                        const s = new XMLSerializer().serializeToString(svg);
+                        const blob = new Blob([s], { type: 'image/svg+xml' });
+                        const a = document.createElement('a');
+                        a.href = URL.createObjectURL(blob);
+                        a.download = 'chart.svg';
+                        a.click();
+                        URL.revokeObjectURL(a.href);
+                      }
+                    }
+                  }}
+                >
+                  Download (SVG)
+                </button>
               </>
             )}
           </div>

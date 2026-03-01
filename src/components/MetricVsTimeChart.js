@@ -28,7 +28,7 @@ export default function MetricVsTimeChart({ data, metric, title, onEnlarge }) {
             <XAxis dataKey="shortDate" tick={{ fill: 'rgba(255,255,255,0.6)', fontSize: 11 }} axisLine={{ stroke: 'rgba(255,255,255,0.12)' }} tickLine={false} />
             <YAxis tick={{ fill: 'rgba(255,255,255,0.5)', fontSize: 11 }} axisLine={false} tickLine={false} width={55} tickFormatter={(v) => Number(v).toLocaleString()} />
             <Tooltip content={<CustomTooltip />} />
-            <Line type="monotone" dataKey="value" name={metric} stroke="#818cf8" strokeWidth={2} dot={{ r: 3 }} />
+            <Line type="monotone" dataKey="value" name={metric} stroke="var(--yale-blue)" strokeWidth={2} dot={{ r: 3, fill: 'var(--yale-blue)' }} />
           </LineChart>
         </ResponsiveContainer>
       </div>
