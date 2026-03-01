@@ -118,9 +118,11 @@ export async function executeYouTubeTool(toolName, args, channelVideos, anchorIm
     }
 
     case 'play_video': {
-      let idx = typeof args.video_index === 'number' ? args.video_index : parseInt(args.video_index, 10);
-      if (Number.isNaN(idx) || idx < 0) idx = 0;
+      let idx = typeof args.video_index === 'number' ? args.video_index : parseInt(String(args.video_index), 10);
+      idx = Math.floor(Number.isNaN(idx) ? 0 : idx);
+      if (idx < 0) idx = 0;
       if (idx >= 1 && idx <= videos.length) idx = idx - 1;
+      if (idx >= videos.length) idx = videos.length - 1;
       const v = videos[idx];
       if (!v) return { error: `Video index ${idx} out of range. There are ${videos.length} videos (use 0 to ${videos.length - 1}).` };
       const videoUrl = v.video_url || v.url || (v.video_id && `https://www.youtube.com/watch?v=${v.video_id}`) || (v.id && `https://www.youtube.com/watch?v=${v.id}`);
