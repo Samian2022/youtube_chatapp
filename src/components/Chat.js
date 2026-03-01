@@ -161,29 +161,37 @@ function GeneratedImageBlock({ data, mimeType, onEnlarge }) {
 }
 
 function EnlargedImageContent({ data, mimeType }) {
-  const blobUrl = useMemo(() => {
+  const mime = mimeType || 'image/png';
+  const [loadFailed, setLoadFailed] = useState(false);
+  const src = useMemo(() => {
     if (!data || typeof data !== 'string') return null;
-    try {
-      const blob = base64ToBlob(data, mimeType || 'image/png');
-      return URL.createObjectURL(blob);
-    } catch {
-      return null;
-    }
-  }, [data, mimeType]);
-  useEffect(() => {
-    return () => { if (blobUrl) URL.revokeObjectURL(blobUrl); };
-  }, [blobUrl]);
+    const clean = data.replace(/\s/g, '');
+    return `data:${mime};base64,${clean}`;
+  }, [data, mime]);
   const handleDownload = () => {
     if (!data) return;
     try {
-      const blob = base64ToBlob(data, mimeType || 'image/png');
+      const blob = base64ToBlob(data, mime);
       downloadBlobAsFile(blob, 'generated.png');
     } catch {}
   };
-  if (!blobUrl) return <p>Image could not be displayed.</p>;
+  if (!src) return <p>Image could not be displayed.</p>;
+  if (loadFailed) {
+    return (
+      <>
+        <p className="chat-enlarge-failed">Image failed to load in lightbox. You can still download it below.</p>
+        <button type="button" className="chat-enlarge-download" onClick={handleDownload}>Download</button>
+      </>
+    );
+  }
   return (
     <>
-      <img src={blobUrl} alt="Enlarged" className="chat-enlarge-img" />
+      <img
+        src={src}
+        alt="Enlarged"
+        className="chat-enlarge-img"
+        onError={() => setLoadFailed(true)}
+      />
       <button type="button" className="chat-enlarge-download" onClick={handleDownload}>Download</button>
     </>
   );

@@ -1442,7 +1442,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  z-index: 10001;
   padding: var(--space-6);
   animation: overlayIn 0.2s var(--ease-out-expo);
 }
@@ -1495,8 +1495,17 @@
 .chat-enlarge-img {
   max-width: 100%;
   max-height: 80vh;
+  width: auto;
+  height: auto;
+  object-fit: contain;
   border-radius: var(--radius-md);
   display: block;
+}
+
+.chat-enlarge-failed {
+  margin: 0 0 var(--space-4);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
 }
 
 .chat-enlarge-download {
