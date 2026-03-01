@@ -270,7 +270,7 @@ const { fetchChannelData } = require('./youtubeChannel');
 app.post('/api/youtube/channel', async (req, res) => {
   try {
     const { url, maxVideos } = req.body;
-    const max = Math.min(Math.max(parseInt(maxVideos, 10) || 10, 100), 100);
+    const max = Math.min(100, Math.max(1, parseInt(maxVideos, 10) || 10));
     if (!url || !String(url).trim())
       return res.status(400).json({ error: 'Channel URL required' });
     let headersSent = false;

@@ -31,10 +31,12 @@ function App() {
     setUser(null);
   };
 
-  if (user) {
-    return <Chat user={user} onLogout={handleLogout} />;
-  }
-  return <Auth onLogin={handleLogin} />;
+  return (
+    <>
+      <div className="ambient-lamp" aria-hidden />
+      {user ? <Chat user={user} onLogout={handleLogout} /> : <Auth onLogin={handleLogin} />}
+    </>
+  );
 }
 
 export default App;

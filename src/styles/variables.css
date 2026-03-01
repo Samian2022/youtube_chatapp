@@ -1,64 +1,45 @@
-/* Design system: Yale-inspired, editorial-grade chat UI */
+/* Aliases for LISA Midnight Folio — so existing components keep working. Import after tokens.css. */
 
 :root {
-  /* === Core Brand === */
-  --yale-blue: #00356B;
-  --yale-blue-light: #286DC0;
-  --yale-blue-muted: #63AAFF;
-  --accent-warm: #F2A900;
-  --accent-coral: #E8735A;
+  --yale-blue: var(--lamp-dim);
+  --yale-blue-light: var(--lamp);
+  --yale-blue-muted: var(--lamp-bright);
+  --accent-warm: var(--lamp);
+  --accent-coral: var(--signal-stop);
 
-  /* === Surfaces === */
-  --bg-primary: #FAFAF8;
-  --bg-secondary: #F2F0ED;
-  --bg-tertiary: #E8E5E0;
-  --bg-elevated: #FFFFFF;
-  --bg-code: #1E1E2E;
+  --bg-primary: var(--void);
+  --bg-secondary: var(--room);
+  --bg-tertiary: var(--desk);
+  --bg-elevated: var(--paper);
+  --bg-code: var(--void);
 
-  /* === Text === */
-  --text-primary: #1A1A1A;
-  --text-secondary: #5C5C5C;
-  --text-tertiary: #8A8A8A;
-  --text-on-dark: #F5F5F3;
-  --text-on-brand: #FFFFFF;
+  --text-primary: var(--ink);
+  --text-secondary: var(--ink-faded);
+  --text-tertiary: var(--ink-ghost);
+  --text-on-dark: var(--ink);
+  --text-on-brand: var(--void);
 
-  /* === Borders & Dividers === */
-  --border-subtle: #E0DDD8;
-  --border-default: #D1CEC8;
-  --border-strong: #B0ADA6;
+  --border-subtle: var(--binding);
+  --border-default: var(--binding);
+  --border-strong: var(--binding-strong);
 
-  /* === Semantic === */
-  --success: #2D8A56;
-  --warning: #D4930D;
-  --error: #C94432;
-  --info: var(--yale-blue-light);
+  --success: var(--signal-go);
+  --warning: var(--signal-wait);
+  --error: var(--signal-stop);
+  --info: var(--signal-note);
 
-  /* === Shadows === */
-  --shadow-sm: 0 1px 2px rgba(0,0,0,0.04), 0 1px 3px rgba(0,0,0,0.06);
-  --shadow-md: 0 4px 12px rgba(0,0,0,0.06), 0 1px 4px rgba(0,0,0,0.04);
-  --shadow-lg: 0 12px 40px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.04);
-  --shadow-overlay: 0 24px 80px rgba(0,0,0,0.12);
+  --shadow-sm: var(--depth-shallow);
+  --shadow-md: var(--depth-medium);
+  --shadow-lg: var(--depth-deep);
+  --shadow-overlay: var(--depth-abyss);
 
-  /* === Typography === */
-  --font-display: 'Instrument Serif', Georgia, serif;
-  --font-body: 'DM Sans', -apple-system, sans-serif;
+  --text-xs: var(--size-xs);
+  --text-sm: var(--size-sm);
+  --text-base: var(--size-base);
+  --text-lg: var(--size-lg);
+  --text-xl: var(--size-xl);
+  --text-2xl: var(--size-2xl);
 
-  --text-xs: 0.75rem;
-  --text-sm: 0.8125rem;
-  --text-base: 0.9375rem;
-  --text-lg: 1.125rem;
-  --text-xl: 1.5rem;
-  --text-2xl: 2rem;
-
-  --leading-tight: 1.3;
-  --leading-normal: 1.6;
-  --leading-relaxed: 1.8;
-
-  --tracking-tight: -0.01em;
-  --tracking-normal: 0;
-  --tracking-wide: 0.02em;
-
-  /* === Spacing (4px base) === */
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
@@ -70,14 +51,12 @@
   --space-12: 48px;
   --space-16: 64px;
 
-  /* === Radii === */
-  --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 14px;
-  --radius-xl: 20px;
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+  --radius-xl: var(--radius-xl);
   --radius-full: 9999px;
 
-  /* === Transitions === */
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
   --duration-fast: 100ms;
   --duration-normal: 150ms;
@@ -86,8 +65,8 @@
 
 @media (prefers-reduced-motion: reduce) {
   :root {
-    --duration-fast: 0ms;
-    --duration-normal: 0ms;
-    --duration-slow: 0ms;
+    --duration-fast: 0.01ms;
+    --duration-normal: 0.01ms;
+    --duration-slow: 0.01ms;
   }
 }

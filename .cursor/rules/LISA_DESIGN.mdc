@@ -1,0 +1,14 @@
+---
+description: UI and design must follow the LISA Midnight Folio design bible. Do not deviate.
+globs: **/*.css, **/*.jsx, **/*.tsx, **/App.js, **/Auth*.js, **/Chat*.js, **/Layout/**/*
+---
+
+# LISA design — do not deviate
+
+- **Design bible:** `docs/LISA_DESIGN_BIBLE.md`. Read it for every UI/design change.
+- **Aesthetic:** "Midnight Folio" — dark room (--void, --room, --desk), gold lamp accent (--lamp), warm ink text (--ink). No chat bubbles, no pure white, no Inter/Roboto.
+- **Typography:** Display = Cormorant Garamond; Body = Satoshi (fallback DM Sans); Mono = IBM Plex Mono.
+- **Gold** = Lisa's identity, CTAs, focus, active state, chart/data emphasis. Use sparingly and meaningfully.
+- **Components:** No Material/Chakra/Ant. Custom or shadcn fully restyled. Lucide icons only (no emoji in chrome).
+- **Motion:** Under 300ms except ambient lamp (3s) and progress shimmer (1.8s). Respect prefers-reduced-motion.
+- When editing CSS or React UI, align with the tokens, typography scale, and component specs in the design bible.

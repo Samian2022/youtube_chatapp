@@ -1,0 +1,73 @@
+/* LISA — Grain, vignette, ambient lamp. Design bible: docs/LISA_DESIGN_BIBLE.md */
+
+/* 1. Film grain overlay (global) */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  pointer-events: none;
+  opacity: 0.018;
+  background: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  mix-blend-mode: overlay;
+}
+
+/* 2. Vignette corners */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  background: radial-gradient(ellipse at 50% 40%, transparent 50%, rgba(0, 0, 0, 0.25) 100%);
+}
+
+/* 3. Ambient lamp (mount in App/layout; this is the class) */
+.ambient-lamp {
+  position: fixed;
+  z-index: 0;
+  pointer-events: none;
+  top: -15%;
+  right: 10%;
+  width: 900px;
+  height: 900px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(200, 164, 78, 0.045) 0%,
+    rgba(200, 164, 78, 0.015) 35%,
+    transparent 70%
+  );
+  filter: blur(60px);
+  transition: opacity 3s ease, background 3s ease;
+}
+
+.ambient-lamp--youtube {
+  background: radial-gradient(
+    circle,
+    rgba(255, 80, 60, 0.03) 0%,
+    rgba(255, 80, 60, 0.01) 35%,
+    transparent 70%
+  );
+}
+
+.ambient-lamp--streaming {
+  background: radial-gradient(
+    circle,
+    rgba(96, 165, 250, 0.035) 0%,
+    transparent 60%
+  );
+  animation: breathe 4s ease-in-out infinite;
+}
+
+@keyframes breathe {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ambient-lamp,
+  .ambient-lamp--streaming {
+    animation: none;
+  }
+}

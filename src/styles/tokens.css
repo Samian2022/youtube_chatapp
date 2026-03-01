@@ -1,0 +1,99 @@
+/* LISA Midnight Folio - docs/LISA_DESIGN_BIBLE.md */
+
+:root {
+  --void: #08080A;
+  --room: #0E0E12;
+  --desk: #151519;
+  --paper: #1C1C22;
+  --paper-fold: #24242B;
+  --paper-edge: #2E2E37;
+
+  --lamp: #C8A44E;
+  --lamp-dim: #9A7B36;
+  --lamp-bright: #E2C366;
+  --lamp-glow: rgba(200, 164, 78, 0.07);
+  --lamp-ember: rgba(200, 164, 78, 0.03);
+
+  --ink: #E4E0D8;
+  --ink-faded: #A09C94;
+  --ink-ghost: #635F58;
+  --ink-trace: #3D3A35;
+  --ink-invisible: #2A2825;
+
+  --binding: rgba(255, 255, 255, 0.05);
+  --binding-strong: rgba(255, 255, 255, 0.09);
+  --binding-gold: rgba(200, 164, 78, 0.15);
+
+  --signal-go: #34D399;
+  --signal-wait: #FBBF24;
+  --signal-stop: #F87171;
+  --signal-note: #60A5FA;
+
+  --depth-shallow: 0 1px 3px rgba(0, 0, 0, 0.4);
+  --depth-medium: 0 4px 20px rgba(0, 0, 0, 0.45), 0 1px 6px rgba(0, 0, 0, 0.3);
+  --depth-deep: 0 16px 64px rgba(0, 0, 0, 0.55), 0 4px 16px rgba(0, 0, 0, 0.3);
+  --depth-abyss: 0 32px 100px rgba(0, 0, 0, 0.7);
+  --depth-inner: inset 0 1px 0 rgba(255, 255, 255, 0.025);
+  --depth-lamp: 0 0 30px rgba(200, 164, 78, 0.06), 0 0 80px rgba(200, 164, 78, 0.03);
+
+  --font-display: 'Cormorant Garamond', 'Garamond', 'Georgia', serif;
+  --font-body: 'Satoshi', 'DM Sans', -apple-system, system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', 'SF Mono', 'Consolas', monospace;
+
+  --size-micro: 0.625rem;
+  --size-2xs: 0.6875rem;
+  --size-xs: 0.75rem;
+  --size-sm: 0.8125rem;
+  --size-base: 0.9375rem;
+  --size-md: 1.0625rem;
+  --size-lg: 1.25rem;
+  --size-xl: 1.625rem;
+  --size-2xl: 2.25rem;
+  --size-hero: 3.25rem;
+
+  --leading-tight: 1.2;
+  --leading-snug: 1.4;
+  --leading-normal: 1.6;
+  --leading-relaxed: 1.75;
+
+  --tracking-tightest: -0.04em;
+  --tracking-tight: -0.02em;
+  --tracking-normal: 0;
+  --tracking-wide: 0.05em;
+  --tracking-widest: 0.12em;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  --radius-sm: 5px;
+  --radius-md: 7px;
+  --radius-lg: 10px;
+  --radius-xl: 14px;
+
+  --transition-micro: 80ms ease;
+  --transition-fast: 120ms ease;
+  --transition-base: 200ms ease;
+  --transition-smooth: 250ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 1.5px var(--lamp-dim), 0 0 12px var(--lamp-glow), 0 0 30px var(--lamp-ember);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --transition-micro: 0.01ms;
+    --transition-fast: 0.01ms;
+    --transition-base: 0.01ms;
+    --transition-smooth: 0.01ms;
+  }
+}

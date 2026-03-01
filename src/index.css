@@ -1,4 +1,8 @@
+/* LISA — Midnight Folio. Design bible: docs/LISA_DESIGN_BIBLE.md */
+@import './styles/tokens.css';
 @import './styles/variables.css';
+@import './styles/typography.css';
+@import './styles/effects.css';
 
 * {
   box-sizing: border-box;
@@ -11,25 +15,7 @@ body {
   min-height: 100vh;
 }
 
-body {
-  font-family: var(--font-body);
-  font-size: var(--text-base);
-  line-height: var(--leading-normal);
-  color: var(--text-primary);
-  background: var(--bg-primary);
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
 #root {
   min-height: 100vh;
-}
-
-code {
-  font-family: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
-}
-
-:focus-visible {
-  outline: 2px solid var(--yale-blue-muted);
-  outline-offset: 2px;
+  position: relative;
 }
