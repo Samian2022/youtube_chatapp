@@ -448,10 +448,14 @@ export default function Chat({ user, onLogout }) {
     // Mode selection:
     //   useTools        — CSV loaded + no Python needed → client-side JS tools (free, fast)
     //   useCodeExecution — Python explicitly needed (regression, histogram, etc.)
-    //   else            — Google Search streaming (also used for "tell me about this file")
+    //   else            — Google Search streaming
     const useTools = !!sessionCsvRows && !wantPythonOnly && !wantCode && !capturedCsv;
     const useYouTubeTools = !!channelJsonData && channelJsonData.length > 0;
-    const useCodeExecution = wantPythonOnly || wantCode && !useYouTubeTools;
+    // Don't use code execution when the user wants app-only tools (plot, play video, stats, generate image)
+    // but those tools aren't available (no channel JSON). The model would try to call them in Python and get NameError.
+    const wantsChannelTool = /\b(plot|chart|graph|play|watch|open\s+video|statistic|view_count|like_count|comment_count|metric\s+vs|over\s+time)\b/i.test(text);
+    const wantsImageGen = /\b(generate|create|design)\s+(an?\s+)?(image|thumbnail|visual)\b|\bimage\s+generation\b/i.test(text);
+    const useCodeExecution = (wantPythonOnly || (wantCode && !useYouTubeTools)) && !((wantsChannelTool || wantsImageGen) && !useYouTubeTools);
 
     // ── Build prompt ─────────────────────────────────────────────────────────
     // sessionSummary: auto-computed column stats, included with every message
@@ -593,7 +597,10 @@ ${sessionSummary}${slimCsvBlock}
         );
       } else {
         // ── Streaming path: code execution or search ─────────────────────────
-        for await (const chunk of streamChat(history, promptForGemini, imageParts, useCodeExecution, user)) {
+        const codeExecutionPrompt = useCodeExecution
+          ? `[You are running Python in a sandbox. Only standard Python and libraries (e.g. pandas, matplotlib) exist. Do NOT call plot_metric_vs_time, play_video, compute_stats_json, generateImage, or any other chat tools — they are not defined in Python.]\n\n${promptForGemini}`
+          : promptForGemini;
+        for await (const chunk of streamChat(history, codeExecutionPrompt, imageParts, useCodeExecution, user)) {
           if (abortRef.current) break;
           if (chunk.type === 'text') {
             fullContent += chunk.text;
